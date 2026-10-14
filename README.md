@@ -1,6 +1,6 @@
 **Отчёт по практической и домашней работе №3**  
 **Тема: «Потоки: pthread vs clone()»**  
-![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAANklEQVR4nO3OQQmAABRAsSeYxZw/lieLGMACBrCCNxG2BFtmZquOAAD4i3Ot7mr/egIAwGvXA6fGBdgoVMwYAAAAAElFTkSuQmCC)  
+ 
 **1. Исходный код clone_thread.c и pthread-версии**  
 ***1.1 Код реализации ручного потока через clone() с комментариями флагов***  
 #define _GNU_SOURCE  
@@ -76,7 +76,7 @@
      return 0;  
  }  
    
-![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAANUlEQVR4nO3OMQ2AABAAsSNhwgJWEPcbJpnRgQU2QtIq6DIze3UGAMBf3Gu1VcfXEwAAXrseaIkEMIPgIvAAAAAASUVORK5CYII=)  
+
 **2. Демонстрация разделения памяти между main и clone**  
 Вывод программы ./clone_thread:  
 [MAIN] Стартовал: PID=99519, TID=99519  
@@ -85,8 +85,10 @@
  [CHILD] Адрес разделяемой переменной: 0x589250112068  
  [MAIN] Финальное значение счётчика: 10000  
    
+![Вывод clone_thread](clone_memory.png)
+
 **Анализ:** Тождество PID родителя и потомка доказывает корректность флага CLONE_THREAD. Совпадение виртуальных адресов переменной shared_counter и её успешный инкремент внутри clone-потока экспериментально подтверждают работу общей памяти CLONE_VM без использования механизмов IPC.  
-![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAANklEQVR4nO3OUQmAABBAsSeYxZyXSzCJASxgACv4J8KWYMvMbNURAAB/ca7VXe1fTwAAeO16AKe+BdmJqrPdAAAAAElFTkSuQmCC)  
+  
 **3. Полный код bench.c и таблица результатов **perf stat  
 ***3.1 Исходный код bench.c***  
 #define _GNU_SOURCE  
@@ -170,8 +172,17 @@
    
 1. **Скорость работы:** Режим fork показал худшее время процессорного времени (275.78 мс), поскольку ядро вынуждено полностью дублировать структуры дескрипторов памяти. clone без флага CLONE_THREAD (143.27 мс) и pthread (191.26 мс) работают значительно быстрее благодаря общему адресному пространству CLONE_VM.  
 2. **Аномалия переключений контекста:** У режима pthread зафиксирован резкий всплеск до  **415** переключений контекста. Это наглядно доказывает, что библиотека glibc/NPTL в пространстве пользователя совершает большой объём скрытой работы: аллокацию управляющих структур pthread_t, настройку Guard Area стека и синхронизацию через futex при вызове pthread_join(), чего лишён легковесный "ручной" вызов clone   
-   
-![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAANUlEQVR4nO3OMQ2AABAAsSPBCUZfE2IYmVDBhAU2QtIq6DIzW7UHAMBfnGt1V8fXEwAAXrse/xcF7U7sx4wAAAAASUVORK5CYII=)  
+ 
+##### Скриншоты верификации perf stat:
+**Режим fork:**
+![perf stat fork](perf_fork.png)
+
+**Режим pthread:**
+![perf stat pthread](perf_pthread.png)
+
+**Режим clone:**
+![perf stat clone](perf_clone.png)  
+ 
 **4. Лог загрузки кастомного ядра с опциями трассировки и вывод bench в QEMU**  
 - Конфигурация ядра (.config) была успешно расширена опциями: CONFIG_KPROBES=y, CONFIG_FUNCTION_TRACER=y.  
 - Лог успешной инициализации подсистемы трассировки при старте QEMU:  
@@ -182,7 +193,7 @@
    
 ***Сравнение производительности бенчмарка (Хост vs QEMU)***  
 Внутри изолированной среды QEMU на кастомном ядре 4.19.322 абсолютные значения показателей context-switches для многопоточных тестов оказались в среднем на 15–20% ниже и стабильнее, чем на хост-системе Ubuntu. Это напрямую связано с отсутствием «процессорного шума» — фоновых потоков графической оболочки, браузера и системных демонов хоста.  
-![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAANUlEQVR4nO3OMQ2AABAAsSNhYMMAKlD4OzrxgQU2QtIq6DIzR3UFAMBf3Gu1VefXEwAAXtsfSqADWz4G/HUAAAAASUVORK5CYII=)  
+
 **5. Исходный код clone_probe.c и лог dmesg трассировки kprobe**  
 ***5.1 Исходный код модуля ядра clone_probe.c***  
 #include <linux/module.h>  
@@ -232,7 +243,7 @@
  [   12.939983] clone_probe: [DETECTED] pid=1024 tgid=1024 comm=bench <- Режим pthread (поток 3)  
    
 **Вывод:** Лог ядра доказывает, что независимые Userspace-механизмы (fork и pthread_create) на уровне Kernelspace унифицируются планировщиком и проходят через единую системную точку создания задач _do_fork (kernel_clone).  
-![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnEAAAACCAYAAAA3pIp+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAANklEQVR4nO3OQQmAABRAsSfYxZo/jzlMYQLPJrCCNxG2BFtmZquOAAD4i3Ot7mr/egIAwGvXA4q7Bc870TqdAAAAAElFTkSuQmCC)  
+
 **6. Модификация конвейера в mini-shell**  
 ***6.1 Изменённый фрагмент minishell.c (Реализация pthread-конвейера через общий буфер)***  
 // Чтение байта из кольцевого буфера в общем пространстве памяти с условными переменными  
