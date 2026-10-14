@@ -1,1 +1,0 @@
-cmd_/home/yona/praktika3/clone_probe.ko := ld -r -m elf_x86_64  -z max-page-size=0x200000 -z noexecstack --no-warn-rwx-segments -T ./scripts/module-common.lds  --build-id  -o /home/yona/praktika3/clone_probe.ko /home/yona/praktika3/clone_probe.o /home/yona/praktika3/clone_probe.mod.o ;  true

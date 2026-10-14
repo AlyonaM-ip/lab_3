@@ -1,0 +1,17 @@
+# 1. Проверяем ручной поток (покажет PID, TID и общую память)
+/root/clone_thread 10000
+
+# 2. Проверяем бенчмарк (каждый режим)
+/root/bench fork 500
+/root/bench pthread 500
+/root/bench clone 500
+
+# 3. Проверяем модуль ядра
+dmesg -n 1
+insmod /root/clone_probe.ko
+/root/bench pthread 5
+dmesg | tail -n 15
+rmmod clone_probe
+
+# 4. Проверяем мини-шелл
+echo -e "set pipeline-mode pthread\nexit" | /root/minishell

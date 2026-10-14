@@ -1,24 +1,25 @@
-# Определяем компилятор и флаги
+# Переименовали переменную, чтобы не злить сборщик ядра Linux
 CC = gcc
-CFLAGS = -std=gnu11 -Wall -Wextra -Wpedantic -O2 -pthread
+USER_CFLAGS = -std=gnu11 -Wall -Wextra -Wpedantic -O2 -pthread
 
-# Объекты для сборки пространства пользователя
+# Список программ для сборки
 TARGETS = clone_thread bench minishell
 
-# Объекты для сборки модуля ядра Linux
+# Настройки для сборки модуля ядра
 obj-m += clone_probe.o
-KDIR ?= /lib/modules/$(shell uname -r)/build
+KDIR = /home/yona/linux-4.19.322
 
 all: $(TARGETS) kernel_module
 
+# Используем USER_CFLAGS вместо CFLAGS
 clone_thread: clone_thread.c
-	$(CC) $(CFLAGS) clone_thread.c -o clone_thread
+	$(CC) $(USER_CFLAGS) clone_thread.c -o clone_thread
 
 bench: bench.c
-	$(CC) $(CFLAGS) bench.c -o bench
+	$(CC) $(USER_CFLAGS) bench.c -o bench
 
 minishell: minishell.c
-	$(CC) $(CFLAGS) minishell.c -o minishell
+	$(CC) $(USER_CFLAGS) minishell.c -o minishell
 
 kernel_module:
 	make -C $(KDIR) M=$(PWD) modules
